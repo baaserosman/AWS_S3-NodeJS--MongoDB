@@ -1,5 +1,5 @@
 import React from "react";
-import "./cropper.css";
+import "./cropper";
 
 import Cropper from "react-easy-crop";
 import Slider from "@material-ui/core/Slider";
@@ -9,6 +9,7 @@ import CancelIcon from "@material-ui/icons/Cancel";
 import getCroppedImg, { generateDownload } from "../../utils/cropImage";
 import { IconButton, makeStyles } from "@material-ui/core";
 import { SnackbarContext } from "../snackbar/snackbar";
+import { BackdropContext } from "../backdrop/backdrop";
 import { dataURLtoFile } from "../../utils/dataURLtoFile";
 
 const useStyles = makeStyles({
@@ -26,7 +27,7 @@ const useStyles = makeStyles({
   },
 });
 
-export default function RenderCropper({ handleCropper }) {
+export default function RenderCropper({ handleCropper, setAvatar }) {
   const classes = useStyles();
 
   const inputRef = React.useRef();
@@ -34,6 +35,7 @@ export default function RenderCropper({ handleCropper }) {
   const triggerFileSelectPopup = () => inputRef.current.click();
 
   const setStateSnackbarContext = React.useContext(SnackbarContext);
+  const { closeBackdrop, showBackdrop } = React.useContext(BackdropContext);
 
   const [image, setImage] = React.useState(null);
   const [croppedArea, setCroppedArea] = React.useState(null);
@@ -43,6 +45,7 @@ export default function RenderCropper({ handleCropper }) {
   const onCropComplete = (croppedAreaPercentage, croppedAreaPixels) =>
     setCroppedArea(croppedAreaPixels);
 
+  // To read file as Data URL
   const onSelectFile = (event) => {
     if (event.target.files && event.target.files.length > 0) {
       const reader = new FileReader();
@@ -53,6 +56,7 @@ export default function RenderCropper({ handleCropper }) {
     }
   };
 
+  // To download the edited image
   const onDownload = () => {
     if (!image)
       return setStateSnackbarContext(
@@ -64,6 +68,7 @@ export default function RenderCropper({ handleCropper }) {
     generateDownload(image, croppedArea);
   };
 
+  // Clear the selected image
   const onClear = () => {
     if (!image)
       return setStateSnackbarContext(
@@ -75,6 +80,7 @@ export default function RenderCropper({ handleCropper }) {
     setImage(null);
   };
 
+  // To upload the edited image
   const onUpload = async () => {
     if (!image)
       return setStateSnackbarContext(
@@ -89,13 +95,12 @@ export default function RenderCropper({ handleCropper }) {
       canvasDataUrl,
       "cropped-image.jpeg"
     );
-    // http://localhost:9000/api/users/setProfilePic
-
-    // console.log(convertedUrlToFile);
 
     try {
       const formdata = new FormData();
       formdata.append("croppedImage", convertedUrlToFile);
+
+      showBackdrop();
 
       const res = await fetch("http://localhost:9000/api/users/setProfilePic", {
         method: "POST",
@@ -103,8 +108,11 @@ export default function RenderCropper({ handleCropper }) {
       });
 
       const res2 = await res.json();
-      console.log(res2);
+
+      closeBackdrop();
+      setAvatar(res2.data);
     } catch (err) {
+      closeBackdrop();
       console.warn(err);
     }
   };
